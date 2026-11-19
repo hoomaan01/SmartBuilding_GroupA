@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Smart Building - Group A</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+
+<body>
+
+    <header class="header">
+        <div>
+            <h1>Smart Building Dashboard</h1>
+            <p>Group A | Environmental Monitoring System</p>
+        </div>
+
+        <div class="connection">
+            <span id="connectionStatus">Connecting...</span>
+        </div>
+    </header>
+
+    <section class="access-panel" aria-labelledby="accessTitle">
+        <div class="access-content">
+            <label for="accessCode" id="accessTitle">Group A dashboard access code</label>
+            <p>Enter the access code provided by your instructor.</p>
+            <input
+                type="password"
+                id="accessCode"
+                placeholder="Code provided by your instructor"
+                autocomplete="off"
+                spellcheck="false"
+            >
+        </div>
+        <button type="button" id="connectButton">Connect</button>
+        <p class="access-message" id="accessMessage" role="status" aria-live="polite">
+            Enter your access code to connect.
+        </p>
+    </section>
+
+    <main class="container dashboard-locked" id="dashboardContent">
+
+        <section class="overview">
+            <h2>Environmental Overview</h2>
+            <p>Real-time monitoring of indoor environmental conditions</p>
+            <p>Last Update: <span id="lastUpdate">--</span></p>
+        </section>
+
+        <section class="sensor-grid">
+
+            <div class="card">
+                <h3>Temperature</h3>
+                <p class="value"><span id="temperature">--</span> °C</p>
+            </div>
+
+            <div class="card">
+                <h3>Humidity</h3>
+                <p class="value"><span id="humidity">--</span> %</p>
+            </div>
+
+            <div class="card">
+                <h3>Illuminance</h3>
+                <p class="value"><span id="illuminance">--</span> lux</p>
+            </div>
+
+            <div class="card">
+                <h3>eCO2</h3>
+                <p class="value"><span id="eco2">--</span> ppm</p>
+            </div>
+
+            <div class="card">
+                <h3>TVOC</h3>
+                <p class="value"><span id="tvoc">--</span> ppb</p>
+            </div>
+
+            <div class="card">
+                <h3>Motion Detection</h3>
+                <p class="value" id="motion">--</p>
+            </div>
+
+        </section>
+
+        <section class="windows-section">
+            <h2>Window Monitoring</h2>
+
+            <div class="window-grid">
+
+                <div class="card">
+                    <h3>Window W1</h3>
+                    <p class="value" id="window1">--</p>
+                </div>
+
+                <div class="card">
+                    <h3>Window W2</h3>
+                    <p class="value" id="window2">--</p>
+                </div>
+
+            </div>
+        </section>
+
+        <section class="system-section">
+            <h2>System Information</h2>
+            <p>Device ID: <span id="deviceId">--</span></p>
+            <p>Data Status: <span id="dataStatus">Waiting for data</span></p>
+        </section>
+
+    </main>
+
+    <footer>
+        <p>Smart Building Project | Group A</p>
+    </footer>
+
+    <script src="app.js"></script>
+
+</body>
+</html>
