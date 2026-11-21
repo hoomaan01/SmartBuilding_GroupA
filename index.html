@@ -1,1 +1,201 @@
-<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>SmartBuilding — Group A</title><link rel="stylesheet" href="styles.css"></head><body><main class="shell"><header><div><p class="eyebrow">SMART BUILDING · ENVIRONMENTAL MONITORING</p><h1>Group A Dashboard</h1><p class="sub">Live indoor environment and window monitoring</p></div><span id="status" class="status">Not connected</span></header><section class="panel connection"><div><label for="access">Group A dashboard access code</label><input id="access" type="password" autocomplete="off" placeholder="Enter the code provided by your instructor"><small>Code stays in this browser tab and is never saved to GitHub or local storage.</small></div><button id="connect">Connect</button><button id="disconnect" class="secondary" disabled>Disconnect</button></section><p id="message" role="status" class="message"></p><section class="cards" id="cards"><article class="metric"><span>Temperature</span><strong id="temperature">—</strong><small>°C</small></article><article class="metric"><span>Relative humidity</span><strong id="humidity">—</strong><small>%</small></article><article class="metric"><span>Illuminance</span><strong id="lux">—</strong><small>lux</small></article><article class="metric"><span>eCO₂</span><strong id="eco2">—</strong><small>ppm · estimated</small></article><article class="metric"><span>TVOC</span><strong id="tvoc">—</strong><small>ppb</small></article><article class="metric"><span>Motion (PIR)</span><strong id="motion">—</strong><small>Detected / clear</small></article><article class="metric"><span>Window W1</span><strong id="w1">—</strong><small id="w1time">Last event —</small></article><article class="metric"><span>Window W2</span><strong id="w2">—</strong><small id="w2time">Last event —</small></article></section><section class="chart-grid"><article class="panel chart"><div class="chart-heading"><h2>Temperature trend</h2><span>°C</span></div><canvas id="chartTemp" aria-label="Temperature trend chart"></canvas></article><article class="panel chart"><div class="chart-heading"><h2>Humidity trend</h2><span>%</span></div><canvas id="chartHumidity" aria-label="Humidity trend chart"></canvas></article><article class="panel chart"><div class="chart-heading"><h2>Illuminance trend</h2><span>lux</span></div><canvas id="chartLux" aria-label="Illuminance trend chart"></canvas></article><article class="panel chart"><div class="chart-heading"><h2>eCO₂ trend</h2><span>ppm</span></div><canvas id="chartCO2" aria-label="eCO₂ trend chart"></canvas></article><article class="panel chart"><div class="chart-heading"><h2>TVOC trend</h2><span>ppb</span></div><canvas id="chartTVOC" aria-label="TVOC trend chart"></canvas></article><article class="panel chart"><div class="chart-heading"><h2>Window states</h2><span>Current state</span></div><div class="window-grid"><div>W1 <b id="window1">—</b></div><div>W2 <b id="window2">—</b></div></div><p class="sub">Window state comes from the latest recorded event. History charts cover the last 60 samples.</p></article></section><footer><span>Device: <code>ENV_GROUP_A_01</code></span><span>Last recorded: <time id="last">—</time></span><span>Refresh: every 30 seconds · No CSV export</span></footer></main><script src="app.js" defer></script></body></html>
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="theme-color" content="#050d17">
+  <title>SmartBuilding — Group A</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Vazirmatn:wght@400;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<main class="shell">
+
+  <!-- ===== Header ===== -->
+  <header>
+    <div>
+      <p class="eyebrow">SMART BUILDING · ENVIRONMENTAL MONITORING</p>
+      <h1>Group A Dashboard</h1>
+      <p class="sub">Live indoor environment and window monitoring</p>
+    </div>
+    <span id="status" class="status">Not connected</span>
+  </header>
+
+  <!-- ===== Access code (unchanged, stays on top) ===== -->
+  <section class="panel connection">
+    <div>
+      <label for="access">Group A dashboard access code</label>
+      <input id="access" type="password" autocomplete="off" placeholder="Enter the code provided by your instructor">
+      <small>Code stays in this browser tab and is never saved to GitHub or local storage.</small>
+    </div>
+    <button id="connect">Connect</button>
+    <button id="disconnect" class="secondary" disabled>Disconnect</button>
+  </section>
+
+  <p id="message" role="status" class="message"></p>
+
+  <!-- ===== Cards: 3 rows × 3 columns ===== -->
+  <section class="cards" id="cards">
+
+    <!-- Row 1: Temperature · Humidity · Illuminance -->
+    <article class="metric" id="cardTemp">
+      <div class="m-head"><span>Temperature</span><em id="tempnote" class="chip">—</em></div>
+      <div class="m-body">
+        <div class="m-text">
+          <strong id="temperature">—</strong>
+          <small>°C</small>
+        </div>
+        <svg class="icon" viewBox="0 0 48 96" aria-hidden="true">
+          <rect class="ic-line" x="18" y="6" width="12" height="62" rx="6"/>
+          <circle class="ic-line" cx="24" cy="76" r="14"/>
+          <rect class="ic-cover" x="19.5" y="62" width="9" height="14"/>
+          <circle id="thermoBulb" cx="24" cy="76" r="10" fill="#888"/>
+          <rect id="thermoFill" x="20.5" y="40" width="7" height="34" rx="3.5" fill="#888"/>
+          <g class="ic-tick"><line x1="34" y1="16" x2="40" y2="16"/><line x1="34" y1="30" x2="38" y2="30"/><line x1="34" y1="44" x2="40" y2="44"/><line x1="34" y1="58" x2="38" y2="58"/></g>
+        </svg>
+      </div>
+      <div class="frost" aria-hidden="true"></div>
+    </article>
+
+    <article class="metric" id="cardHum">
+      <div class="m-head"><span>Relative humidity</span><em id="humnote" class="chip">—</em></div>
+      <div class="m-body">
+        <div class="m-text">
+          <strong id="humidity">—</strong>
+          <small>%</small>
+        </div>
+        <svg class="icon" viewBox="0 0 48 64" aria-hidden="true">
+          <defs><clipPath id="dropClip"><path d="M24 4C24 4 6 26 6 40a18 18 0 0 0 36 0C42 26 24 4 24 4Z"/></clipPath></defs>
+          <g clip-path="url(#dropClip)"><rect id="dropFill" x="0" y="30" width="48" height="34" fill="#888"/></g>
+          <path class="ic-line" d="M24 4C24 4 6 26 6 40a18 18 0 0 0 36 0C42 26 24 4 24 4Z"/>
+        </svg>
+      </div>
+    </article>
+
+    <article class="metric" id="cardLux">
+      <div class="m-head"><span>Illuminance</span><em id="luxnote" class="chip">—</em></div>
+      <div class="m-body">
+        <div class="m-text">
+          <strong id="lux">—</strong>
+          <small>lux</small>
+        </div>
+        <svg class="icon" id="sunIcon" viewBox="0 0 64 64" aria-hidden="true">
+          <g id="sunRays"></g>
+          <circle id="sunCore" cx="32" cy="32" r="11" fill="#64748b"/>
+        </svg>
+      </div>
+      <div class="bar"><i id="luxbar"></i></div>
+    </article>
+
+    <!-- Row 2: eCO2 · TVOC · Motion -->
+    <article class="metric" id="cardCO2">
+      <div class="m-head"><span>eCO₂</span><em id="co2note" class="chip">—</em></div>
+      <div class="m-body">
+        <div class="m-text">
+          <strong id="eco2">—</strong>
+          <small>ppm · estimated</small>
+        </div>
+        <svg class="icon sm" viewBox="0 0 48 48" aria-hidden="true">
+          <circle id="co2dot" cx="24" cy="24" r="8" fill="#888"/>
+          <circle class="ic-line" cx="24" cy="24" r="16" id="co2ring"/>
+        </svg>
+      </div>
+      <div class="bar"><i id="co2bar"></i></div>
+    </article>
+
+    <article class="metric" id="cardTVOC">
+      <div class="m-head"><span>TVOC</span><em id="tvocnote" class="chip">—</em></div>
+      <div class="m-body">
+        <div class="m-text">
+          <strong id="tvoc">—</strong>
+          <small>ppb</small>
+        </div>
+        <svg class="icon sm" viewBox="0 0 48 48" aria-hidden="true">
+          <circle id="tvocdot" cx="24" cy="24" r="8" fill="#888"/>
+          <circle class="ic-line" cx="24" cy="24" r="16" id="tvocring"/>
+        </svg>
+      </div>
+      <div class="bar"><i id="tvocbar"></i></div>
+    </article>
+
+    <article class="metric" id="cardMotion" data-motion="unknown">
+      <div class="m-head"><span>Motion (PIR)</span></div>
+      <div class="m-body">
+        <div class="m-text">
+          <strong id="motion">—</strong>
+          <small>Detected / clear</small>
+        </div>
+        <svg class="icon pir" viewBox="0 0 64 64" aria-hidden="true">
+          <circle class="pir-pulse" cx="32" cy="32" r="18"/>
+          <circle class="pir-pulse p2" cx="32" cy="32" r="18"/>
+          <circle class="pir-dot" cx="32" cy="32" r="18"/>
+        </svg>
+      </div>
+    </article>
+
+    <!-- Row 3: Window W1 · Window W2 · Door D1 -->
+    <article class="metric opening" id="cardW1" data-state="unknown">
+      <div class="m-head"><span>Window W1</span></div>
+      <div class="m-body">
+        <div class="m-text">
+          <strong id="w1">—</strong>
+          <small id="w1time">Last event —</small>
+        </div>
+        <div class="anim" data-kind="window"></div>
+      </div>
+    </article>
+
+    <article class="metric opening" id="cardW2" data-state="unknown">
+      <div class="m-head"><span>Window W2</span></div>
+      <div class="m-body">
+        <div class="m-text">
+          <strong id="w2">—</strong>
+          <small id="w2time">Last event —</small>
+        </div>
+        <div class="anim" data-kind="window"></div>
+      </div>
+    </article>
+
+    <article class="metric opening" id="cardD1" data-state="unknown">
+      <div class="m-head"><span>Door D1</span></div>
+      <div class="m-body">
+        <div class="m-text">
+          <strong id="d1">—</strong>
+          <small id="d1time">Last event —</small>
+        </div>
+        <div class="anim" data-kind="door"></div>
+      </div>
+    </article>
+
+  </section>
+
+  <!-- ===== Charts (all preserved) ===== -->
+  <section class="chart-grid">
+    <article class="panel chart"><div class="chart-heading"><h2>Temperature trend</h2><span>°C</span></div><canvas id="chartTemp" aria-label="Temperature trend chart"></canvas></article>
+    <article class="panel chart"><div class="chart-heading"><h2>Humidity trend</h2><span>%</span></div><canvas id="chartHumidity" aria-label="Humidity trend chart"></canvas></article>
+    <article class="panel chart"><div class="chart-heading"><h2>Illuminance trend</h2><span>lux</span></div><canvas id="chartLux" aria-label="Illuminance trend chart"></canvas></article>
+    <article class="panel chart"><div class="chart-heading"><h2>eCO₂ trend</h2><span>ppm</span></div><canvas id="chartCO2" aria-label="eCO₂ trend chart"></canvas></article>
+    <article class="panel chart"><div class="chart-heading"><h2>TVOC trend</h2><span>ppb</span></div><canvas id="chartTVOC" aria-label="TVOC trend chart"></canvas></article>
+
+    <article class="panel chart">
+      <div class="chart-heading"><h2>Window &amp; door states</h2><span>Current state</span></div>
+      <div class="window-grid">
+        <div><span>W1</span><b id="window1">—</b></div>
+        <div><span>W2</span><b id="window2">—</b></div>
+        <div><span>D1</span><b id="door1">—</b></div>
+      </div>
+      <p class="sub">Window and door states come from the latest recorded event. History charts cover the last 60 samples.</p>
+    </article>
+  </section>
+
+  <footer>
+    <span>Device: <code>ENV_GROUP_A_01</code></span>
+    <span>Last recorded: <time id="last">—</time></span>
+    <span>Refresh: every 30 seconds · No CSV export</span>
+  </footer>
+</main>
+<script src="app.js" defer></script>
+</body>
+</html>
