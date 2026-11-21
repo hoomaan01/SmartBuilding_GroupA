@@ -85,6 +85,36 @@ function scaleColor(stops, v) {
 const tempColor = (v) => scaleColor(TEMP_STOPS, v);
 const humColor = (v) => scaleColor(HUM_STOPS, v);
 
+// Gauge colour scales (temperature -20..60 °C, humidity 0..100 %).
+const GAUGE_TEMP_STOPS = [
+  [-20, '#1e3a8a'],
+  [0,   '#1d4ed8'],
+  [8,   '#38bdf8'],
+  [18,  '#facc15'],
+  [26,  '#fb923c'],
+  [40,  '#ef4444'],
+  [60,  '#b91c1c']
+];
+
+const GAUGE_HUM_STOPS = [
+  [0,   '#f59e0b'],
+  [25,  '#facc15'],
+  [40,  '#34d399'],
+  [60,  '#2dd4bf'],
+  [80,  '#38bdf8'],
+  [100, '#1d4ed8']
+];
+
+const gaugeTempColor = (v) => scaleColor(GAUGE_TEMP_STOPS, v);
+const gaugeHumColor = (v) => scaleColor(GAUGE_HUM_STOPS, v);
+
+// Good / moderate / poor colour for eCO2 and TVOC.
+function qualityColor(v, good, poor) {
+  if (v <= good) return '#34d399';
+  if (v <= poor) return '#fbbf24';
+  return '#f87171';
+}
+
 // Temperature gauge range.
 const TEMP_MIN = -20;
 const TEMP_MAX = 60;
@@ -187,41 +217,6 @@ function initIcons() {
     el.innerHTML = el.dataset.kind === 'door' ? DOOR_SVG : WINDOW_SVG;
   });
 
-  buildGauge('t', TEMP_MIN, TEMP_MAX, 20, 5);
-  buildGauge('h', 0, 100, 25, 5);
-}
-
-// Speedometer ticks and labels (270° sweep, starts at 135°).
-function buildGauge(prefix, min, max, major, minor) {
-  const g = $(prefix + 'Ticks');
-  g.textContent = '';
-
-  const angle = (v) =>
-    (135 + ((v - min) / (max - min)) * 270) * Math.PI / 180;
-
-  for (let v = min; v <= max + 1e-9; v += minor) {
-    const isMajor = Math.abs((v - min) % major) < 1e-9;
-    const a = angle(v);
-    const r1 = 57;
-    const r2 = isMajor ? 48 : 53;
-
-    const line = document.createElementNS(SVG_NS, 'line');
-    line.setAttribute('x1', (100 + Math.cos(a) * r1).toFixed(2));
-    line.setAttribute('y1', (100 + Math.sin(a) * r1).toFixed(2));
-    line.setAttribute('x2', (100 + Math.cos(a) * r2).toFixed(2));
-    line.setAttribute('y2', (100 + Math.sin(a) * r2).toFixed(2));
-    line.setAttribute('class', isMajor ? 'g-tick maj' : 'g-tick');
-    g.appendChild(line);
-
-    if (isMajor) {
-      const t = document.createElementNS(SVG_NS, 'text');
-      t.setAttribute('x', (100 + Math.cos(a) * 89).toFixed(2));
-      t.setAttribute('y', (100 + Math.sin(a) * 89).toFixed(2));
-      t.setAttribute('class', 'g-lab');
-      t.textContent = String(Math.round(v));
-      g.appendChild(t);
-    }
-  }
 }
 
 function setAccent(cardId, color) {
@@ -232,9 +227,135 @@ function setChip(id, text) {
   $(id).textContent = text;
 }
 
+function svgEl(name, attrs, parent) {
+  const e = document.createElementNS(SVG_NS, name);
+
+  for (const k in attrs) {
+    e.setAttribute(k, attrs[k]);
+  }
+
+  parent.appendChild(e);
+  return e;
+}
+
+const G_CX = 80;
+const G_CY = 76;
+const G_R = 58;
+const G_SW = 11;
+
+function gPoint(angle, r) {
+  const t = angle * Math.PI / 180;
+  return [G_CX + Math.cos(t) * r, G_CY + Math.sin(t) * r];
+}
+
+function gArc(a0, a1, r) {
+  const p0 = gPoint(a0, r);
+  const p1 = gPoint(a1, r);
+  const large = (a1 - a0) > 180 ? 1 : 0;
+
+  return `M${p0[0].toFixed(2)} ${p0[1].toFixed(2)}` +
+    `A${r} ${r} 0 ${large} 1 ${p1[0].toFixed(2)} ${p1[1].toFixed(2)}`;
+}
+
+// Draws the arc gauge. Only the filled part is coloured; the rest of
+// the track stays empty. A NaN value draws just the empty track.
+function drawGauge(svgId, stops, min, max, v) {
+  const svg = $(svgId);
+  svg.textContent = '';
+
+  svgEl('path', {
+    d: gArc(135, 405, G_R + 10.5),
+    fill: 'none',
+    stroke: 'rgba(255,255,255,.07)',
+    'stroke-width': 0.8
+  }, svg);
+
+  svgEl('path', {
+    d: gArc(135, 405, G_R),
+    fill: 'none',
+    stroke: '#1a1e24',
+    'stroke-width': G_SW,
+    'stroke-linecap': 'round'
+  }, svg);
+
+  if (!Number.isFinite(v)) return null;
+
+  const p = Math.min(Math.max((v - min) / (max - min), 0), 1);
+  const a0 = 135;
+  const a1 = 135 + 270 * p;
+  const n = Math.max(2, Math.round(p * 70));
+
+  for (let i = 0; i < n; i++) {
+    const s0 = a0 + (a1 - a0) * i / n;
+    const s1 = a0 + (a1 - a0) * (i + 1) / n + (i < n - 1 ? 0.6 : 0);
+
+    svgEl('path', {
+      d: gArc(s0, s1, G_R),
+      fill: 'none',
+      'stroke-width': G_SW,
+      stroke: scaleColor(stops, min + (max - min) * ((i + 0.5) / n) * p)
+    }, svg);
+  }
+
+  const start = gPoint(a0, G_R);
+  const knob = gPoint(a1, G_R);
+  const color = scaleColor(stops, v);
+
+  svgEl('circle', {
+    cx: start[0], cy: start[1], r: G_SW / 2,
+    fill: scaleColor(stops, min + (max - min) * 0.001)
+  }, svg);
+
+  svgEl('circle', {
+    cx: knob[0], cy: knob[1], r: 12,
+    fill: color, opacity: 0.22
+  }, svg);
+
+  svgEl('circle', {
+    cx: knob[0], cy: knob[1], r: 6.5,
+    fill: '#fff', stroke: color, 'stroke-width': 2.5
+  }, svg);
+
+  return color;
+}
+
+const particleState = {};
+
+function setParticles(containerId, count, size, dur, color, opacity) {
+  const box = $(containerId);
+  const key = `${count}|${color}`;
+
+  if (particleState[containerId] === key) return;
+  particleState[containerId] = key;
+
+  box.textContent = '';
+
+  for (let i = 0; i < count; i++) {
+    const d = document.createElement('i');
+    const sz = size * (0.6 + Math.random() * 0.8);
+
+    d.className = 'pt';
+    d.style.cssText =
+      `width:${sz.toFixed(1)}px;height:${sz.toFixed(1)}px;` +
+      `right:${(6 + Math.random() * 34).toFixed(1)}%;background:${color};` +
+      `--o:${opacity};` +
+      `animation-duration:${(dur * (0.7 + Math.random() * 0.6)).toFixed(2)}s;` +
+      `animation-delay:-${(Math.random() * dur).toFixed(2)}s`;
+    box.appendChild(d);
+  }
+}
+
+function clearParticles() {
+  for (const id of ['partsCO2', 'partsTVOC']) {
+    $(id).textContent = '';
+    particleState[id] = '';
+  }
+}
+
 function resetVisuals() {
-  for (const id of ['cardTemp', 'cardHum']) {
+  for (const id of ['cardTemp', 'cardHum', 'cardCO2', 'cardTVOC']) {
     $(id).style.removeProperty('--accent');
+    $(id).classList.remove('tint');
   }
 
   $('cardTemp').classList.remove('frozen', 'hot');
@@ -243,27 +364,19 @@ function resetVisuals() {
   setChip('tempnote', '—');
   setChip('humnote', '—');
 
-  setGauge('t', 0);
-  setGauge('h', 0);
-}
+  drawGauge('tSvg', GAUGE_TEMP_STOPS, TEMP_MIN, TEMP_MAX, NaN);
+  drawGauge('hSvg', GAUGE_HUM_STOPS, 0, 100, NaN);
 
-// Speedometer gauge: arc fill + needle (270° sweep from 135°).
-function setGauge(prefix, pct) {
-  const p = Math.min(Math.max(pct, 0), 1);
-
-  $(prefix + 'Arc').style.strokeDasharray = `${(p * 100).toFixed(2)} 100`;
-  $(prefix + 'Needle').style.transform = `rotate(${(135 + p * 270).toFixed(1)}deg)`;
+  visualLux(NaN);
+  clearParticles();
 }
 
 function visualTemperature(v) {
   const n = num(v);
   if (!Number.isFinite(n)) return;
 
-  const c = tempColor(n);
+  const c = drawGauge('tSvg', GAUGE_TEMP_STOPS, TEMP_MIN, TEMP_MAX, n);
   setAccent('cardTemp', c);
-
-  // Gauge range: -20 .. 60 °C.
-  setGauge('t', (n - TEMP_MIN) / (TEMP_MAX - TEMP_MIN));
 
   $('cardTemp').classList.toggle('frozen', n <= 4);
   $('cardTemp').classList.toggle('hot', n >= 32);
@@ -284,11 +397,8 @@ function visualHumidity(v) {
   const n = num(v);
   if (!Number.isFinite(n)) return;
 
-  const c = humColor(n);
+  const c = drawGauge('hSvg', GAUGE_HUM_STOPS, 0, 100, n);
   setAccent('cardHum', c);
-
-  // Gauge range: 0 .. 100 %.
-  setGauge('h', n / 100);
 
   setChip(
     'humnote',
@@ -297,6 +407,76 @@ function visualHumidity(v) {
       : n <= 70 ? 'Humid'
       : 'Very humid'
   );
+}
+
+// Pulsing dot: 4 bands (0-20, 20-100, 100-300, >300 lux).
+function visualLux(v) {
+  const n = num(v);
+  const wrap = document.querySelector('#cardLux .pulse');
+  const dot = $('luxDot');
+  const ring = $('luxRing');
+
+  if (!Number.isFinite(n)) {
+    wrap.classList.remove('on');
+    dot.style.cssText = '';
+    ring.style.cssText = '';
+    return;
+  }
+
+  let size, glow, glowColor, scale, color;
+
+  if (n < 20) {
+    size = 10; glow = 4; scale = 1.6;
+    glowColor = 'rgba(190,205,225,.35)'; color = '#cbd5e1';
+  } else if (n < 100) {
+    size = 13; glow = 10; scale = 2;
+    glowColor = 'rgba(240,240,235,.5)'; color = '#f5f5f0';
+  } else if (n < 300) {
+    size = 16; glow = 20; scale = 2.6;
+    glowColor = 'rgba(255,236,190,.7)'; color = '#fff4d0';
+  } else {
+    size = 20; glow = 34; scale = 3.2;
+    glowColor = 'rgba(255,226,150,.95)'; color = '#fff4d0';
+  }
+
+  const margin = `${-size / 2}px 0 0 ${-size / 2}px`;
+
+  dot.style.width = `${size}px`;
+  dot.style.height = `${size}px`;
+  dot.style.margin = margin;
+  dot.style.background = color;
+  dot.style.boxShadow =
+    `0 0 ${glow}px ${Math.round(glow / 3)}px ${glowColor}`;
+
+  ring.style.width = `${size}px`;
+  ring.style.height = `${size}px`;
+  ring.style.margin = margin;
+  ring.style.borderColor = color;
+  ring.style.setProperty('--rs', scale);
+
+  wrap.classList.add('on');
+}
+
+function visualGas(v, kind) {
+  const n = num(v);
+  if (!Number.isFinite(n)) return;
+
+  const co2 = kind === 'co2';
+  const card = co2 ? 'cardCO2' : 'cardTVOC';
+  const color = co2
+    ? qualityColor(n, 800, 1200)
+    : qualityColor(n, 220, 660);
+
+  setAccent(card, color);
+  $(card).classList.add('tint');
+
+  if (co2) {
+    const count = Math.min(12, Math.max(3, Math.round(3 + (n - 400) / 1600 * 9)));
+    setParticles('partsCO2', count, 12, 9, color, 0.28);
+  } else {
+    const count = Math.min(16, Math.max(4, Math.round(4 + n / 1000 * 12)));
+    setParticles('partsTVOC', count, 5, 5, color, 0.4);
+  }
 }
 
 function visualMotion(v) {
@@ -476,6 +656,9 @@ function display(data) {
   // Visual indicators.
   visualTemperature(data.temperature_c);
   visualHumidity(data.humidity_rh);
+  visualLux(data.illuminance_lux);
+  visualGas(data.eco2_ppm, 'co2');
+  visualGas(data.tvoc_ppb, 'tvoc');
   visualMotion(data.motion_detected);
 
   const timestamp =

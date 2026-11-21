@@ -40,38 +40,20 @@
   <section class="cards" id="cards">
 
     <!-- Row 1: Temperature · Humidity · Illuminance -->
-    <article class="metric" id="cardTemp">
+    <article class="metric gcard" id="cardTemp">
       <div class="m-head"><span>Temperature</span><em id="tempnote" class="chip">—</em></div>
       <div class="gauge">
-        <svg viewBox="0 0 200 175" aria-hidden="true">
-          <path class="g-track" pathLength="100" d="M50.5 149.5A70 70 0 1 1 149.5 149.5"/>
-          <path class="g-arc" id="tArc" pathLength="100" d="M50.5 149.5A70 70 0 1 1 149.5 149.5"/>
-          <g id="tTicks"></g>
-          <g class="g-needle" id="tNeedle"><polygon points="100,96.5 100,103.5 156,100"/></g>
-          <circle class="g-hub" cx="100" cy="100" r="7"/>
-        </svg>
-        <div class="g-center">
-          <strong id="temperature">—</strong>
-          <small>°C</small>
-        </div>
+        <svg viewBox="0 0 160 150" id="tSvg" aria-hidden="true"></svg>
+        <div class="g-val"><strong id="temperature">—</strong><small>°C</small></div>
       </div>
       <div class="frost" aria-hidden="true"></div>
     </article>
 
-    <article class="metric" id="cardHum">
+    <article class="metric gcard" id="cardHum">
       <div class="m-head"><span>Relative humidity</span><em id="humnote" class="chip">—</em></div>
       <div class="gauge">
-        <svg viewBox="0 0 200 175" aria-hidden="true">
-          <path class="g-track" pathLength="100" d="M50.5 149.5A70 70 0 1 1 149.5 149.5"/>
-          <path class="g-arc" id="hArc" pathLength="100" d="M50.5 149.5A70 70 0 1 1 149.5 149.5"/>
-          <g id="hTicks"></g>
-          <g class="g-needle" id="hNeedle"><polygon points="100,96.5 100,103.5 156,100"/></g>
-          <circle class="g-hub" cx="100" cy="100" r="7"/>
-        </svg>
-        <div class="g-center">
-          <strong id="humidity">—</strong>
-          <small>%</small>
-        </div>
+        <svg viewBox="0 0 160 150" id="hSvg" aria-hidden="true"></svg>
+        <div class="g-val"><strong id="humidity">—</strong><small>%</small></div>
       </div>
     </article>
 
@@ -81,10 +63,12 @@
         <strong id="lux">—</strong>
         <small>lux</small>
       </div>
+      <div class="pulse" aria-hidden="true"><i class="ring" id="luxRing"></i><i class="dot" id="luxDot"></i></div>
     </article>
 
     <!-- Row 2: eCO2 · TVOC · Motion -->
     <article class="metric plain" id="cardCO2">
+      <div class="parts" id="partsCO2" aria-hidden="true"></div>
       <div class="m-head"><span>eCO₂</span></div>
       <div class="m-text">
         <strong id="eco2">—</strong>
@@ -93,6 +77,7 @@
     </article>
 
     <article class="metric plain" id="cardTVOC">
+      <div class="parts" id="partsTVOC" aria-hidden="true"></div>
       <div class="m-head"><span>TVOC</span></div>
       <div class="m-text">
         <strong id="tvoc">—</strong>
@@ -107,11 +92,13 @@
           <strong id="motion">—</strong>
           <small>Detected / clear</small>
         </div>
-        <svg class="pir" viewBox="0 0 64 64" aria-hidden="true">
-          <circle class="pir-circle" cx="32" cy="32" r="28"/>
+        <svg class="pir" viewBox="0 0 80 80" aria-hidden="true">
+          <circle class="pir-ring r2" cx="40" cy="40" r="37"/>
+          <circle class="pir-ring r1" cx="40" cy="40" r="31"/>
+          <circle class="pir-main" cx="40" cy="40" r="24"/>
           <g class="person">
-            <circle cx="32" cy="22" r="7"/>
-            <path d="M18 47c0-9 6-15 14-15s14 6 14 15z"/>
+            <circle cx="40" cy="33" r="5.5"/>
+            <path d="M29 52c0-7 5-11 11-11s11 4 11 11z"/>
           </g>
         </svg>
       </div>
