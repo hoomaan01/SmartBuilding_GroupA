@@ -1,4 +1,3 @@
-
 'use strict';
 
 // ============================================================
@@ -29,9 +28,73 @@ let rows = [];
 let inFlight = false;
 let sessionId = 0;
 
+// ============================================================
+// Colour scales (temperature / humidity)
+// ============================================================
+
+// Temperature: <=4 °C frozen dark blue ... 24 °C orange ... >=32 °C red
+const TEMP_STOPS = [
+  [0,  '#1e40af'],
+  [4,  '#2563eb'],
+  [12, '#22d3ee'],
+  [18, '#facc15'],
+  [24, '#fb923c'],
+  [28, '#f97316'],
+  [32, '#ef4444'],
+  [40, '#dc2626']
+];
+
+// Humidity: dry = amber, comfortable = green/teal, humid = blue
+const HUM_STOPS = [
+  [0,   '#f59e0b'],
+  [20,  '#fb923c'],
+  [30,  '#facc15'],
+  [40,  '#34d399'],
+  [55,  '#2dd4bf'],
+  [65,  '#38bdf8'],
+  [80,  '#3b82f6'],
+  [100, '#1d4ed8']
+];
+
+function hexToRgb(h) {
+  const n = parseInt(h.slice(1), 16);
+  return [(n >> 16) & 255, (n >> 8) & 255, n & 255];
+}
+
+function scaleColor(stops, v) {
+  if (v <= stops[0][0]) return stops[0][1];
+  if (v >= stops[stops.length - 1][0]) {
+    return stops[stops.length - 1][1];
+  }
+
+  for (let i = 1; i < stops.length; i++) {
+    if (v <= stops[i][0]) {
+      const [v0, c0] = stops[i - 1];
+      const [v1, c1] = stops[i];
+      const f = (v - v0) / (v1 - v0);
+      const a = hexToRgb(c0);
+      const b = hexToRgb(c1);
+      const rgb = a.map((x, k) => Math.round(x + (b[k] - x) * f));
+      return `rgb(${rgb[0]},${rgb[1]},${rgb[2]})`;
+    }
+  }
+
+  return stops[stops.length - 1][1];
+}
+
+const tempColor = (v) => scaleColor(TEMP_STOPS, v);
+const humColor = (v) => scaleColor(HUM_STOPS, v);
+
+// Good / moderate / poor colour for eCO2 and TVOC.
+function qualityColor(v, good, poor) {
+  if (v <= good) return '#34d399';
+  if (v <= poor) return '#fbbf24';
+  return '#f87171';
+}
+
 const charts = [
-  ['chartTemp', 'temperature_c', '#18b7c5'],
-  ['chartHumidity', 'humidity_rh', '#8cb8ff'],
+  ['chartTemp', 'temperature_c', tempColor],
+  ['chartHumidity', 'humidity_rh', humColor],
   ['chartLux', 'illuminance_lux', '#f4c873'],
   ['chartCO2', 'eco2_ppm', '#a99aff'],
   ['chartTVOC', 'tvoc_ppb', '#eea1bd']
@@ -59,6 +122,11 @@ function value(v, digits = 1) {
   return Number.isFinite(n) ? n.toFixed(digits) : '—';
 }
 
+function num(v) {
+  if (v === null || v === undefined || v === '') return NaN;
+  return Number(v);
+}
+
 function when(s) {
   if (!s) return '—';
 
@@ -74,6 +142,232 @@ function windowLabel(v) {
     : '—';
 }
 
+// ============================================================
+// Icons and visual cards
+// ============================================================
+
+const SVG_NS = 'http://www.w3.org/2000/svg';
+
+const WINDOW_SVG = `
+<svg viewBox="0 0 120 110" aria-hidden="true">
+  <defs>
+    <linearGradient id="skyG" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#5eb6ff"/><stop offset="1" stop-color="#cfeeff"/>
+    </linearGradient>
+  </defs>
+  <rect class="frame" x="8" y="6" width="104" height="98" rx="7"/>
+  <g class="outside">
+    <rect x="16" y="14" width="88" height="82" fill="url(#skyG)"/>
+    <circle cx="86" cy="32" r="8" fill="#fde68a"/>
+    <path d="M26 44q6-9 14-4 5-7 13 0 8-2 9 6H26z" fill="#fff" opacity=".9"/>
+  </g>
+  <g class="sash">
+    <rect class="glass" x="16" y="14" width="88" height="82"/>
+    <line class="bars" x1="60" y1="14" x2="60" y2="96"/>
+    <line class="bars" x1="16" y1="55" x2="104" y2="55"/>
+    <rect class="handle" x="94" y="50" width="5" height="12" rx="2"/>
+  </g>
+</svg>`;
+
+const DOOR_SVG = `
+<svg viewBox="0 0 120 110" aria-hidden="true">
+  <rect class="frame" x="22" y="4" width="76" height="102" rx="5"/>
+  <g class="spill">
+    <rect x="28" y="10" width="64" height="94" fill="#0f2a3d"/>
+    <path d="M28 104h64l-14-40H42z" fill="#fde68a" opacity=".28"/>
+  </g>
+  <g class="leaf">
+    <rect class="panelfill" x="28" y="10" width="64" height="94"/>
+    <rect class="inset" x="36" y="18" width="48" height="32"/>
+    <rect class="inset" x="36" y="58" width="48" height="38"/>
+    <circle class="knob" cx="83" cy="62" r="3.6"/>
+  </g>
+  <rect x="14" y="104" width="92" height="4" rx="2" fill="#27465c"/>
+</svg>`;
+
+function initIcons() {
+  document.querySelectorAll('.anim').forEach((el) => {
+    el.innerHTML = el.dataset.kind === 'door' ? DOOR_SVG : WINDOW_SVG;
+  });
+
+  // Sun rays (8 rays, length and opacity driven by illuminance).
+  const g = $('sunRays');
+
+  for (let i = 0; i < 8; i++) {
+    const a = (i * Math.PI) / 4;
+    const line = document.createElementNS(SVG_NS, 'line');
+
+    line.setAttribute('x1', 32 + Math.cos(a) * 17);
+    line.setAttribute('y1', 32 + Math.sin(a) * 17);
+    line.setAttribute('x2', 32 + Math.cos(a) * 24);
+    line.setAttribute('y2', 32 + Math.sin(a) * 24);
+    line.setAttribute('stroke-linecap', 'round');
+    line.setAttribute('stroke-width', '3');
+    line.dataset.angle = a;
+    g.appendChild(line);
+  }
+}
+
+function setAccent(cardId, color) {
+  $(cardId).style.setProperty('--accent', color);
+}
+
+function setChip(id, text) {
+  $(id).textContent = text;
+}
+
+function resetVisuals() {
+  for (const id of ['cardTemp', 'cardHum', 'cardLux', 'cardCO2', 'cardTVOC']) {
+    $(id).style.removeProperty('--accent');
+  }
+
+  $('cardTemp').classList.remove('frozen', 'hot');
+  $('cardMotion').dataset.motion = 'unknown';
+
+  for (const id of ['tempnote', 'humnote', 'luxnote', 'co2note', 'tvocnote']) {
+    setChip(id, '—');
+  }
+
+  for (const id of ['luxbar', 'co2bar', 'tvocbar']) {
+    $(id).style.width = '0';
+  }
+
+  $('thermoFill').setAttribute('y', 70);
+  $('thermoFill').setAttribute('height', 4);
+  $('dropFill').setAttribute('y', 58);
+  $('sunCore').setAttribute('fill', '#64748b');
+
+  $('sunRays').querySelectorAll('line').forEach((l) => {
+    l.setAttribute('opacity', 0.15);
+    l.setAttribute('stroke', '#64748b');
+  });
+
+  for (const id of ['thermoFill', 'thermoBulb', 'dropFill', 'co2dot', 'tvocdot']) {
+    $(id).setAttribute('fill', '#888');
+  }
+}
+
+function visualTemperature(v) {
+  const n = num(v);
+  if (!Number.isFinite(n)) return;
+
+  const c = tempColor(n);
+  setAccent('cardTemp', c);
+
+  // Thermometer: -10 .. 45 °C mapped over the tube.
+  const pct = Math.min(Math.max((n + 10) / 55, 0.03), 1);
+  const top = 70 - pct * 58;
+
+  $('thermoFill').setAttribute('y', top);
+  $('thermoFill').setAttribute('height', 74 - top);
+  $('thermoFill').setAttribute('fill', c);
+  $('thermoBulb').setAttribute('fill', c);
+
+  $('cardTemp').classList.toggle('frozen', n <= 4);
+  $('cardTemp').classList.toggle('hot', n >= 32);
+
+  setChip(
+    'tempnote',
+    n <= 0 ? 'Freezing'
+      : n <= 4 ? 'Near freezing'
+      : n < 16 ? 'Cold'
+      : n < 21 ? 'Cool'
+      : n <= 26 ? 'Comfortable'
+      : n < 32 ? 'Warm'
+      : 'Hot'
+  );
+}
+
+function visualHumidity(v) {
+  const n = num(v);
+  if (!Number.isFinite(n)) return;
+
+  const c = humColor(n);
+  setAccent('cardHum', c);
+
+  const pct = Math.min(Math.max(n / 100, 0.04), 1);
+  $('dropFill').setAttribute('y', 58 - pct * 54);
+  $('dropFill').setAttribute('fill', c);
+
+  setChip(
+    'humnote',
+    n < 30 ? 'Dry'
+      : n <= 60 ? 'Comfortable'
+      : n <= 70 ? 'Humid'
+      : 'Very humid'
+  );
+}
+
+function visualLux(v) {
+  const n = num(v);
+  if (!Number.isFinite(n)) return;
+
+  // 0 .. 3000 lux, square-root scale so low light is still visible.
+  const level = Math.min(Math.max(n, 0) / 3000, 1);
+  const k = Math.sqrt(level);
+
+  const r = Math.round(100 + (253 - 100) * k);
+  const gC = Math.round(116 + (224 - 116) * k);
+  const b = Math.round(139 + (71 - 139) * k);
+  const color = `rgb(${r},${gC},${b})`;
+
+  setAccent('cardLux', k < 0.12 ? '#64748b' : color);
+
+  $('sunCore').setAttribute('fill', color);
+  $('sunIcon').style.filter =
+    `drop-shadow(0 0 ${Math.round(2 + k * 12)}px rgba(253,224,71,${(k * 0.85).toFixed(2)}))`;
+
+  $('sunRays').querySelectorAll('line').forEach((l) => {
+    const a = Number(l.dataset.angle);
+    const len = 17 + 3 + k * 8;
+
+    l.setAttribute('x2', 32 + Math.cos(a) * len);
+    l.setAttribute('y2', 32 + Math.sin(a) * len);
+    l.setAttribute('stroke', color);
+    l.setAttribute('opacity', (0.15 + k * 0.85).toFixed(2));
+  });
+
+  $('luxbar').style.width = `${Math.round(level * 100)}%`;
+  $('luxbar').style.background = color;
+
+  setChip(
+    'luxnote',
+    n < 10 ? 'Dark'
+      : n < 100 ? 'Dim'
+      : n < 500 ? 'Indoor'
+      : n < 1500 ? 'Bright'
+      : 'Very bright'
+  );
+}
+
+function visualGas(v, kind) {
+  const n = num(v);
+  if (!Number.isFinite(n)) return;
+
+  const cfg = kind === 'co2'
+    ? { card: 'cardCO2', note: 'co2note', bar: 'co2bar', dot: 'co2dot', min: 400, max: 2000, good: 800, poor: 1200 }
+    : { card: 'cardTVOC', note: 'tvocnote', bar: 'tvocbar', dot: 'tvocdot', min: 0, max: 660, good: 220, poor: 660 };
+
+  const c = qualityColor(n, cfg.good, cfg.poor);
+
+  setAccent(cfg.card, c);
+  $(cfg.dot).setAttribute('fill', c);
+
+  const pct = Math.min(Math.max((n - cfg.min) / (cfg.max - cfg.min), 0), 1);
+  $(cfg.bar).style.width = `${Math.max(pct * 100, 3)}%`;
+  $(cfg.bar).style.background = c;
+
+  setChip(
+    cfg.note,
+    n <= cfg.good ? 'Good' : n <= cfg.poor ? 'Moderate' : 'Poor'
+  );
+}
+
+function visualMotion(v) {
+  $('cardMotion').dataset.motion =
+    v === true ? 'yes' : v === false ? 'no' : 'unknown';
+}
+
 function clearReadings() {
   for (const id of [
     'temperature',
@@ -85,12 +379,21 @@ function clearReadings() {
     'last',
     'w1',
     'w2',
+    'd1',
     'window1',
     'window2',
+    'door1',
     'w1time',
-    'w2time'
+    'w2time',
+    'd1time'
   ]) {
     $(id).textContent = '—';
+  }
+
+  resetVisuals();
+
+  for (const id of ['cardW1', 'cardW2', 'cardD1']) {
+    $(id).dataset.state = 'unknown';
   }
 }
 
@@ -234,6 +537,14 @@ function display(data) {
 
   $('last').textContent = when(data.recorded_at);
 
+  // Visual indicators.
+  visualTemperature(data.temperature_c);
+  visualHumidity(data.humidity_rh);
+  visualLux(data.illuminance_lux);
+  visualGas(data.eco2_ppm, 'co2');
+  visualGas(data.tvoc_ppb, 'tvoc');
+  visualMotion(data.motion_detected);
+
   const timestamp =
     new Date(data.recorded_at).getTime();
 
@@ -251,32 +562,48 @@ function display(data) {
 }
 
 // ============================================================
-// Window Status — W1 and W2
+// Window and Door Status — W1, W2, D1
 // ============================================================
 
 function displayWindows(windows, latest) {
+  // [event id, latest-sample keys, time element, text element, state box, card]
   const configurations = [
-    ['W1', 'window_1_open', 'w1time', 'window1'],
-    ['W2', 'window_2_open', 'w2time', 'window2']
+    ['W1', ['window_1_open'], 'w1time', 'window1', 'w1', 'cardW1'],
+    ['W2', ['window_2_open'], 'w2time', 'window2', 'w2', 'cardW2'],
+    ['D1', ['door_1_open', 'door_open', 'd1_open'], 'd1time', 'door1', 'd1', 'cardD1']
   ];
 
-  for (const [id, key, timeId, boxId] of configurations) {
-    const event = windows?.[id];
+  for (const [id, keys, timeId, boxId, cardTextId, cardId] of configurations) {
+    const event =
+      windows?.[id] ??
+      windows?.[id.toLowerCase()] ??
+      (id === 'D1' ? windows?.door_1 : undefined);
+
+    const key = keys.find(
+      k => typeof latest?.[k] === 'boolean'
+    );
 
     const open =
       typeof event?.open === 'boolean'
         ? event.open
-        : latest?.[key];
+        : key
+          ? latest[key]
+          : undefined;
 
     const label = windowLabel(open);
 
-    $(id.toLowerCase()).textContent = label;
+    $(cardTextId).textContent = label;
     $(boxId).textContent = label;
+
+    $(cardId).dataset.state =
+      open === true ? 'open'
+        : open === false ? 'closed'
+        : 'unknown';
 
     $(timeId).textContent =
       event?.recorded_at
         ? `Last event: ${when(event.recorded_at)}`
-        : latest && typeof latest[key] === 'boolean'
+        : key
           ? 'Latest sample state'
           : 'No verified state';
   }
@@ -334,10 +661,10 @@ function draw(canvasId, field, color) {
     )
     .sort((a, b) => a.t - b.t);
 
-  ctx.font = '12px system-ui';
+  ctx.font = '12px Inter, system-ui, sans-serif';
   ctx.textAlign = 'right';
-  ctx.fillStyle = '#99b5c1';
-  ctx.strokeStyle = '#315362';
+  ctx.fillStyle = '#8fa9b8';
+  ctx.strokeStyle = '#16314a';
   ctx.lineWidth = 1;
 
   if (!pts.length) {
@@ -395,25 +722,42 @@ function draw(canvasId, field, color) {
   const Y = p =>
     T + (hi - p.y) / (hi - lo) * ph;
 
-  // Draw the data line.
-  ctx.strokeStyle = color;
+  // A function colour draws each segment by its value
+  // (temperature and humidity colour scales).
+  const colorFn = typeof color === 'function' ? color : null;
+
   ctx.lineWidth = 2.4;
-  ctx.beginPath();
+  ctx.lineJoin = 'round';
+  ctx.lineCap = 'round';
 
-  pts.forEach((p, i) => {
-    if (i === 0) {
-      ctx.moveTo(X(p), Y(p));
-    } else {
-      ctx.lineTo(X(p), Y(p));
+  if (colorFn) {
+    for (let i = 1; i < pts.length; i++) {
+      ctx.strokeStyle = colorFn((pts[i - 1].y + pts[i].y) / 2);
+      ctx.beginPath();
+      ctx.moveTo(X(pts[i - 1]), Y(pts[i - 1]));
+      ctx.lineTo(X(pts[i]), Y(pts[i]));
+      ctx.stroke();
     }
-  });
+  } else {
+    ctx.strokeStyle = color;
+    ctx.beginPath();
 
-  ctx.stroke();
+    pts.forEach((p, i) => {
+      if (i === 0) {
+        ctx.moveTo(X(p), Y(p));
+      } else {
+        ctx.lineTo(X(p), Y(p));
+      }
+    });
+
+    ctx.stroke();
+  }
 
   // Highlight the latest point.
   const last = pts[pts.length - 1];
+  const dotColor = colorFn ? colorFn(last.y) : color;
 
-  ctx.fillStyle = color;
+  ctx.fillStyle = dotColor;
   ctx.beginPath();
   ctx.arc(
     X(last),
@@ -425,7 +769,7 @@ function draw(canvasId, field, color) {
   ctx.fill();
 
   // X-axis time labels.
-  ctx.fillStyle = '#99b5c1';
+  ctx.fillStyle = '#8fa9b8';
 
   ctx.textAlign = 'left';
   ctx.fillText(
@@ -624,6 +968,7 @@ $('access').addEventListener('keydown', e => {
 window.addEventListener('resize', renderCharts);
 
 // Initial state.
+initIcons();
 clearReadings();
 status('Not connected');
 renderCharts();
