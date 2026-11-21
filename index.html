@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
-  <meta name="theme-color" content="#050d17">
+  <meta name="theme-color" content="#07080a">
   <title>SmartBuilding — Group A</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -42,95 +42,77 @@
     <!-- Row 1: Temperature · Humidity · Illuminance -->
     <article class="metric" id="cardTemp">
       <div class="m-head"><span>Temperature</span><em id="tempnote" class="chip">—</em></div>
-      <div class="m-body">
-        <div class="m-text">
+      <div class="gauge">
+        <svg viewBox="0 0 200 175" aria-hidden="true">
+          <path class="g-track" pathLength="100" d="M50.5 149.5A70 70 0 1 1 149.5 149.5"/>
+          <path class="g-arc" id="tArc" pathLength="100" d="M50.5 149.5A70 70 0 1 1 149.5 149.5"/>
+          <g id="tTicks"></g>
+          <g class="g-needle" id="tNeedle"><polygon points="100,96.5 100,103.5 156,100"/></g>
+          <circle class="g-hub" cx="100" cy="100" r="7"/>
+        </svg>
+        <div class="g-center">
           <strong id="temperature">—</strong>
           <small>°C</small>
         </div>
-        <svg class="icon" viewBox="0 0 48 96" aria-hidden="true">
-          <rect class="ic-line" x="18" y="6" width="12" height="62" rx="6"/>
-          <circle class="ic-line" cx="24" cy="76" r="14"/>
-          <rect class="ic-cover" x="19.5" y="62" width="9" height="14"/>
-          <circle id="thermoBulb" cx="24" cy="76" r="10" fill="#888"/>
-          <rect id="thermoFill" x="20.5" y="40" width="7" height="34" rx="3.5" fill="#888"/>
-          <g class="ic-tick"><line x1="34" y1="16" x2="40" y2="16"/><line x1="34" y1="30" x2="38" y2="30"/><line x1="34" y1="44" x2="40" y2="44"/><line x1="34" y1="58" x2="38" y2="58"/></g>
-        </svg>
       </div>
       <div class="frost" aria-hidden="true"></div>
     </article>
 
     <article class="metric" id="cardHum">
       <div class="m-head"><span>Relative humidity</span><em id="humnote" class="chip">—</em></div>
-      <div class="m-body">
-        <div class="m-text">
+      <div class="gauge">
+        <svg viewBox="0 0 200 175" aria-hidden="true">
+          <path class="g-track" pathLength="100" d="M50.5 149.5A70 70 0 1 1 149.5 149.5"/>
+          <path class="g-arc" id="hArc" pathLength="100" d="M50.5 149.5A70 70 0 1 1 149.5 149.5"/>
+          <g id="hTicks"></g>
+          <g class="g-needle" id="hNeedle"><polygon points="100,96.5 100,103.5 156,100"/></g>
+          <circle class="g-hub" cx="100" cy="100" r="7"/>
+        </svg>
+        <div class="g-center">
           <strong id="humidity">—</strong>
           <small>%</small>
         </div>
-        <svg class="icon" viewBox="0 0 48 64" aria-hidden="true">
-          <defs><clipPath id="dropClip"><path d="M24 4C24 4 6 26 6 40a18 18 0 0 0 36 0C42 26 24 4 24 4Z"/></clipPath></defs>
-          <g clip-path="url(#dropClip)"><rect id="dropFill" x="0" y="30" width="48" height="34" fill="#888"/></g>
-          <path class="ic-line" d="M24 4C24 4 6 26 6 40a18 18 0 0 0 36 0C42 26 24 4 24 4Z"/>
-        </svg>
       </div>
     </article>
 
-    <article class="metric" id="cardLux">
-      <div class="m-head"><span>Illuminance</span><em id="luxnote" class="chip">—</em></div>
-      <div class="m-body">
-        <div class="m-text">
-          <strong id="lux">—</strong>
-          <small>lux</small>
-        </div>
-        <svg class="icon" id="sunIcon" viewBox="0 0 64 64" aria-hidden="true">
-          <g id="sunRays"></g>
-          <circle id="sunCore" cx="32" cy="32" r="11" fill="#64748b"/>
-        </svg>
+    <article class="metric plain" id="cardLux">
+      <div class="m-head"><span>Illuminance</span></div>
+      <div class="m-text">
+        <strong id="lux">—</strong>
+        <small>lux</small>
       </div>
-      <div class="bar"><i id="luxbar"></i></div>
     </article>
 
     <!-- Row 2: eCO2 · TVOC · Motion -->
-    <article class="metric" id="cardCO2">
-      <div class="m-head"><span>eCO₂</span><em id="co2note" class="chip">—</em></div>
-      <div class="m-body">
-        <div class="m-text">
-          <strong id="eco2">—</strong>
-          <small>ppm · estimated</small>
-        </div>
-        <svg class="icon sm" viewBox="0 0 48 48" aria-hidden="true">
-          <circle id="co2dot" cx="24" cy="24" r="8" fill="#888"/>
-          <circle class="ic-line" cx="24" cy="24" r="16" id="co2ring"/>
-        </svg>
+    <article class="metric plain" id="cardCO2">
+      <div class="m-head"><span>eCO₂</span></div>
+      <div class="m-text">
+        <strong id="eco2">—</strong>
+        <small>ppm · estimated</small>
       </div>
-      <div class="bar"><i id="co2bar"></i></div>
     </article>
 
-    <article class="metric" id="cardTVOC">
-      <div class="m-head"><span>TVOC</span><em id="tvocnote" class="chip">—</em></div>
-      <div class="m-body">
-        <div class="m-text">
-          <strong id="tvoc">—</strong>
-          <small>ppb</small>
-        </div>
-        <svg class="icon sm" viewBox="0 0 48 48" aria-hidden="true">
-          <circle id="tvocdot" cx="24" cy="24" r="8" fill="#888"/>
-          <circle class="ic-line" cx="24" cy="24" r="16" id="tvocring"/>
-        </svg>
+    <article class="metric plain" id="cardTVOC">
+      <div class="m-head"><span>TVOC</span></div>
+      <div class="m-text">
+        <strong id="tvoc">—</strong>
+        <small>ppb</small>
       </div>
-      <div class="bar"><i id="tvocbar"></i></div>
     </article>
 
-    <article class="metric" id="cardMotion" data-motion="unknown">
+    <article class="metric plain" id="cardMotion" data-motion="unknown">
       <div class="m-head"><span>Motion (PIR)</span></div>
       <div class="m-body">
         <div class="m-text">
           <strong id="motion">—</strong>
           <small>Detected / clear</small>
         </div>
-        <svg class="icon pir" viewBox="0 0 64 64" aria-hidden="true">
-          <circle class="pir-pulse" cx="32" cy="32" r="18"/>
-          <circle class="pir-pulse p2" cx="32" cy="32" r="18"/>
-          <circle class="pir-dot" cx="32" cy="32" r="18"/>
+        <svg class="pir" viewBox="0 0 64 64" aria-hidden="true">
+          <circle class="pir-circle" cx="32" cy="32" r="28"/>
+          <g class="person">
+            <circle cx="32" cy="22" r="7"/>
+            <path d="M18 47c0-9 6-15 14-15s14 6 14 15z"/>
+          </g>
         </svg>
       </div>
     </article>
