@@ -5,11 +5,13 @@
   color:var(--text);background:var(--bg);font-synthesis:none
 }
 *{box-sizing:border-box}
-body{margin:0;min-height:100vh;
+body{margin:0;min-height:100vh;background:transparent}
+body::before{content:"";position:fixed;inset:0;z-index:-2;background:url("bg.jpg") center/cover no-repeat;
+  filter:blur(3px) saturate(.8);transform:scale(1.04)}
+body::after{content:"";position:fixed;inset:0;z-index:-1;
   background:
-    radial-gradient(800px 420px at 92% -8%,rgba(245,158,11,.06),transparent 62%),
-    linear-gradient(180deg,#121418 0%,#08090b 55%,#040405 100%);
-  background-attachment:fixed}
+    radial-gradient(800px 420px at 92% -8%,rgba(245,158,11,.05),transparent 62%),
+    linear-gradient(180deg,rgba(7,8,10,.80) 0%,rgba(4,5,6,.90) 100%)}
 .shell{max-width:1180px;margin:auto;padding:30px 22px 50px}
 
 /* ---------- Header ---------- */
@@ -29,7 +31,7 @@ h2{font-size:16px;margin:0;font-weight:700}
 @keyframes live{70%{box-shadow:0 0 0 8px rgba(52,211,153,0)}100%{box-shadow:0 0 0 0 rgba(52,211,153,0)}}
 
 /* ---------- Panels ---------- */
-.panel,.metric{background:linear-gradient(160deg,var(--panel2),var(--panel));border:1px solid var(--line);border-radius:18px;box-shadow:0 10px 34px rgba(0,0,0,.5)}
+.panel,.metric{background:linear-gradient(160deg,rgba(23,26,31,.9),rgba(13,15,18,.92));-webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px);border:1px solid var(--line);border-radius:18px;box-shadow:0 10px 34px rgba(0,0,0,.5)}
 
 /* ---------- Connection ---------- */
 .connection{display:flex;align-items:end;gap:12px;padding:18px;flex-wrap:wrap}
@@ -85,15 +87,16 @@ button:disabled{opacity:.45;cursor:not-allowed}
 #cardTemp.hot{animation:hotpulse 3.2s ease-in-out infinite}
 @keyframes hotpulse{50%{box-shadow:0 10px 40px rgba(239,68,68,.28)}}
 
-/* ---------- Illuminance pulse ---------- */
-.pulse{position:absolute;right:38px;top:50%;width:0;height:0;z-index:1}
-.pulse .dot,.pulse .ring{position:absolute;left:0;top:0;border-radius:50%;display:block}
-.pulse .dot{background:#64748b;width:10px;height:10px;margin:-5px 0 0 -5px;transition:background .6s,box-shadow .6s,width .6s,height .6s,margin .6s}
-.pulse .ring{width:10px;height:10px;margin:-5px 0 0 -5px;border:1.5px solid #fff;opacity:0}
-.pulse.on .dot{animation:dotpulse 2.2s ease-in-out infinite}
-.pulse.on .ring{animation:ringpulse 2.2s ease-out infinite}
-@keyframes dotpulse{0%,100%{transform:scale(1)}50%{transform:scale(1.18)}}
-@keyframes ringpulse{0%{transform:scale(1);opacity:.7}100%{transform:scale(var(--rs,2.2));opacity:0}}
+/* ---------- Illuminance lamp ---------- */
+.bulb{position:absolute;left:50%;top:50%;width:46px;height:62px;margin:-31px 0 0 -23px;z-index:1;
+  --c:#64748b;--fo:0;--g:0px;color:var(--c);transition:color .6s,filter .6s}
+.bulb svg{width:100%;height:100%;display:block;overflow:visible}
+.bulb .line{fill:none;stroke:currentColor;stroke-width:2.6;stroke-linecap:round;stroke-linejoin:round}
+.bulb .fil{stroke-width:2;opacity:.8}
+.bulb .glass{fill:currentColor;fill-opacity:var(--fo);transition:fill-opacity .6s}
+.bulb{filter:drop-shadow(0 0 var(--g) var(--c))}
+.bulb.on{animation:bulbpulse 2.4s ease-in-out infinite}
+@keyframes bulbpulse{0%,100%{transform:scale(1)}50%{transform:scale(1.07)}}
 
 /* ---------- Air-quality particles (eCO2, TVOC) ---------- */
 .parts{position:absolute;inset:0;overflow:hidden;pointer-events:none;z-index:0}
@@ -164,4 +167,4 @@ footer{display:flex;flex-wrap:wrap;justify-content:space-between;gap:12px;font-s
   .connection button{flex:1}
   .window-grid{margin-top:20px}
 }
-@media(prefers-reduced-motion:reduce){*{animation:none!important}.pt{display:none}.anim .sash,.anim .leaf{transition-duration:.01s}}
+@media(prefers-reduced-motion:reduce){*{animation:none!important}.pt{display:none}.bulb.on{animation:none}.anim .sash,.anim .leaf{transition-duration:.01s}}

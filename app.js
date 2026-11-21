@@ -409,52 +409,35 @@ function visualHumidity(v) {
   );
 }
 
-// Pulsing dot: 4 bands (0-20, 20-100, 100-300, >300 lux).
+// Lamp icon: 4 bands (0-20, 20-100, 100-300, >300 lux).
 function visualLux(v) {
   const n = num(v);
-  const wrap = document.querySelector('#cardLux .pulse');
-  const dot = $('luxDot');
-  const ring = $('luxRing');
+  const bulb = $('luxBulb');
 
   if (!Number.isFinite(n)) {
-    wrap.classList.remove('on');
-    dot.style.cssText = '';
-    ring.style.cssText = '';
+    bulb.classList.remove('on');
+    bulb.style.setProperty('--c', '#64748b');
+    bulb.style.setProperty('--fo', 0);
+    bulb.style.setProperty('--g', '0px');
     return;
   }
 
-  let size, glow, glowColor, scale, color;
+  let color, fill, glow;
 
   if (n < 20) {
-    size = 10; glow = 4; scale = 1.6;
-    glowColor = 'rgba(190,205,225,.35)'; color = '#cbd5e1';
+    color = '#94a3b8'; fill = 0; glow = 0;
   } else if (n < 100) {
-    size = 13; glow = 10; scale = 2;
-    glowColor = 'rgba(240,240,235,.5)'; color = '#f5f5f0';
+    color = '#f1f1ec'; fill = 0.14; glow = 7;
   } else if (n < 300) {
-    size = 16; glow = 20; scale = 2.6;
-    glowColor = 'rgba(255,236,190,.7)'; color = '#fff4d0';
+    color = '#fff0c2'; fill = 0.38; glow = 16;
   } else {
-    size = 20; glow = 34; scale = 3.2;
-    glowColor = 'rgba(255,226,150,.95)'; color = '#fff4d0';
+    color = '#ffe08a'; fill = 0.65; glow = 30;
   }
 
-  const margin = `${-size / 2}px 0 0 ${-size / 2}px`;
-
-  dot.style.width = `${size}px`;
-  dot.style.height = `${size}px`;
-  dot.style.margin = margin;
-  dot.style.background = color;
-  dot.style.boxShadow =
-    `0 0 ${glow}px ${Math.round(glow / 3)}px ${glowColor}`;
-
-  ring.style.width = `${size}px`;
-  ring.style.height = `${size}px`;
-  ring.style.margin = margin;
-  ring.style.borderColor = color;
-  ring.style.setProperty('--rs', scale);
-
-  wrap.classList.add('on');
+  bulb.style.setProperty('--c', color);
+  bulb.style.setProperty('--fo', fill);
+  bulb.style.setProperty('--g', `${glow}px`);
+  bulb.classList.add('on');
 }
 
 function visualGas(v, kind) {
